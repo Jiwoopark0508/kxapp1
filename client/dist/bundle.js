@@ -9,8 +9,7 @@ require("angular-ui-router");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-_angular2.default.module("gqApp", ["ui.router"]).config(function ($stateProvider, $urlRouterProvider) {
-    $urlRouterProvider.otherwise("/home");
+_angular2.default.module("gqApp", ["ui.router"]).config(function ($stateProvider) {
 
     $stateProvider.state("home", {
         url: "/home",
@@ -19,6 +18,33 @@ _angular2.default.module("gqApp", ["ui.router"]).config(function ($stateProvider
             this.hello = "환영합니다.";
         },
         controllerAs: "gqCtrl"
+    }).state("questions", {
+        url: "/template",
+        templateUrl: "template/question.html",
+        resolve: {
+            questionService: function questionService($http) {
+                return $http.get('/type');
+            }
+        },
+        controller: function controller(questionService, $location) {
+            this.type = questionService.data;
+            $location.path("/template/" + this.type.id);
+        },
+        controllerAs: "tempCtrl"
+    }).state("questions.list", {
+        url: "/:type",
+        templateUrl: "template/questionList.html",
+        resolve: {
+            questionService: function questionService($http, $stateParams) {
+                var questionType = $stateParams.type;
+                console.log($stateParams.type);
+                return $http.get("/type/" + questionType);
+            }
+        },
+        controller: function controller(questionService) {
+            this.questionList = questionService.data;
+        },
+        controllerAs: 'listCtrl'
     });
 });
 
