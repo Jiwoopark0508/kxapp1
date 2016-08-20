@@ -1,0 +1,14 @@
+<div class="panel-group">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h4 data-toggle="tooltip" data-original-title="{{type.desc}}"  ng-click="toggleTemplates()" class="panel-title">
+{{type.typeStr}}
+            </h4>
+        </div>
+        <div ng-hide="showTemplates" >
+            <ul class="list-group">
+                <li class="list-group-item" ng-repeat="template in type.templates" >{{template}}</li>
+            </ul>
+        </div>
+    </div>
+</div>
