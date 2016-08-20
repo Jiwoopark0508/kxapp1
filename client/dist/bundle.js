@@ -100,7 +100,10 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]).config(function
             };
             scope.formMaker = formMaker;
         },
-        controller: function controller($scope, $sce) {}
+        controller: function controller($scope, $sce) {
+            _angular2.default.element('[data-toggle="tooltip"]').tooltip();
+        }
+
     };
 });
 

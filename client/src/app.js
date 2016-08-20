@@ -100,7 +100,9 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
 
             },
             controller: function($scope, $sce){
+                angular.element('[data-toggle="tooltip"]').tooltip();
             }
+
         };
     });
 
