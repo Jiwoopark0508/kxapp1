@@ -4,6 +4,7 @@ import "angular-ui-router";
 import "angular-bootstrap-npm";
 
 let formMaker = require('./formMaker');
+
 angular.module("gqApp", ["ui.router", "ui.bootstrap"])
     .config( function($stateProvider){
 
@@ -17,19 +18,46 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
                 },
                 controllerAs: "gqCtrl"
             })
-            // pending states
+            // asking question states
             .state("questions", {
-                url: "/template",
+                url: "/template/:lecNum/:lecInterval",
                 templateUrl: "template/question.html",
                 resolve:{
                     questionService: function($http){
                         return $http.get('/type');
+                    },
+                    subgoalService: function($http, $stateParams){
+                        let lecNum = $stateParams.lecNum;
+                        let lecInterval = +$stateParams.lecInterval;
+                        return $http.get(`/subgoal/${lecNum}/${lecInterval}`);
                     }
+
                 },
-                controller: function(questionService, $location){
-                    this.type = questionService.data;
-                    let randomIndex = Math.floor(Math.random() * this.type.length);
-                    $location.path(`/template/${randomIndex}`);
+                controller: function($scope, $sce,  questionService, subgoalService, $stateParams){
+                    this.types = questionService.data;      // bind question template types
+                    this.lecture = subgoalService.data;     // bind lecture's subgoal
+                    this.lecInterval = +$stateParams.lecInterval; // find current lectueInterval state
+
+                    // set current Question
+                    $scope.curQuestion = null;
+                    $scope.setStemQuestion = function(category){
+                        $scope.curQuestion = category;
+                        console.log(category);
+                    };
+
+                    // make form with selected question stem
+                    $scope.curForm = null;
+                    $scope.getForm = function(tempStr, example){
+                        $scope.curForm = $sce.trustAsHtml(formMaker(tempStr, example));
+                        console.log(formMaker(tempStr, example));
+                    };
+
+                    // add and delete completed Questions
+                    $scope.questionBox = [];
+                    $scope.addQuestion = function(){
+                        let blankValue = angular.element("#blank")[0].value;
+                    };
+                     
                 },
                 controllerAs: "tempCtrl"
             })
@@ -51,6 +79,7 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
                 },
                 controllerAs: 'listCtrl' 
             })
+            // state where user listen lecture
             .state("lecture", {
                 url: "/lecture/:type/:number",
                 templateUrl: "template/lecture.html",
@@ -99,11 +128,12 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
                 scope.formMaker = formMaker;
 
             },
-            controller: function($scope, $sce){
+            controller: function(){
                 angular.element('[data-toggle="tooltip"]').tooltip();
             }
 
         };
     });
+
 
 

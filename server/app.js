@@ -52,4 +52,15 @@ app.get('/lecture/:type/:number', (req, res) => {
         res.json(docs);
     });
 });
+app.get('/subgoal/:lecNum/:lecInterval', (req, res) => {
+    let lecture = mongoUtil.lecture();
+    let lecNum = +req.params.lecNum;
+
+    lecture.find({"lecNum" : lecNum}).toArray((err, docs) => {
+        if(err){
+            res.sendStatus(400);
+        }
+        res.json(docs[0]);
+    });
+});
 app.listen(port, () => console.log("listening on port 9000"));

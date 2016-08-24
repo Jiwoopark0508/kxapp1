@@ -1,3 +1,40 @@
-<div ui-view>
-    
+<div class="horizontal-panes">
+    <div class="row">
+    <div class="gq-resizable-horizontal col-md-2">
+        Until now, it was a lecture about {{tempCtrl.lecture.lecSubgoal[tempCtrl.lecInterval].subgoal}}
+    </div>
+    <div class="gq-resizable-horizontal col-md-3">
+        <ul>
+            <li ng-repeat="category in tempCtrl.types" ng-click="setStemQuestion(category)">{{category.typeStr}}</li>
+        </ul>
+    </div>
+
+    <div class="gq-resizable-horizontal col-md-7">
+        <ul>
+            <li ng-click = "getForm(template.tempStr, template.example)" ng-repeat="template in curQuestion.templates">
+            {{template.tempStr}}
+            </li>
+        </ul>
+    </div>
+</div>
+<div class="row">
+    <div class="gq-resizable-horizontal col-md-6">
+            
+         <form ng-submit="addQuestion(stuff)">
+            
+           
+            <div id="question" ng-bind-html="curForm">
+            
+            
+            </div>
+            <button class="btn btn-primary"type="submit">Add</button>
+         </form>
+        
+
+        
+    </div>
+    <div class="gq-resizable-horizontal col-md-6">
+        (Questions that user made)
+    </div>
+</div>
 </div>

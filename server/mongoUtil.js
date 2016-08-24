@@ -17,5 +17,8 @@ module.exports = {
     },
     template() {
         return _db.collection('template');
+    },
+    lecture() {
+        return _db.collection('lecture');
     }
 };

@@ -12,6 +12,7 @@ require("angular-bootstrap-npm");
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var formMaker = require('./formMaker');
+
 _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]).config(function ($stateProvider) {
 
     $stateProvider
@@ -24,19 +25,45 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]).config(function
         },
         controllerAs: "gqCtrl"
     })
-    // pending states
+    // asking question states
     .state("questions", {
-        url: "/template",
+        url: "/template/:lecNum/:lecInterval",
         templateUrl: "template/question.html",
         resolve: {
             questionService: function questionService($http) {
                 return $http.get('/type');
+            },
+            subgoalService: function subgoalService($http, $stateParams) {
+                var lecNum = $stateParams.lecNum;
+                var lecInterval = +$stateParams.lecInterval;
+                return $http.get("/subgoal/" + lecNum + "/" + lecInterval);
             }
+
         },
-        controller: function controller(questionService, $location) {
-            this.type = questionService.data;
-            var randomIndex = Math.floor(Math.random() * this.type.length);
-            $location.path("/template/" + randomIndex);
+        controller: function controller($scope, $sce, questionService, subgoalService, $stateParams) {
+            this.types = questionService.data; // bind question template types
+            this.lecture = subgoalService.data; // bind lecture's subgoal
+            this.lecInterval = +$stateParams.lecInterval; // find current lectueInterval state
+
+            // set current Question
+            $scope.curQuestion = null;
+            $scope.setStemQuestion = function (category) {
+                $scope.curQuestion = category;
+                console.log(category);
+            };
+
+            // make form with selected question stem
+            $scope.curForm = null;
+            $scope.getForm = function (tempStr, example) {
+                $scope.curForm = $sce.trustAsHtml(formMaker(tempStr, example));
+                console.log(formMaker(tempStr, example));
+            };
+
+            // add and delete completed Questions
+            $scope.questionBox = [];
+            $scope.addQuestion = function () {
+                var blankValue = _angular2.default.element("#blank")[0].value;
+            };
         },
         controllerAs: "tempCtrl"
     }).state("questions.list", {
@@ -56,7 +83,9 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]).config(function
             };
         },
         controllerAs: 'listCtrl'
-    }).state("lecture", {
+    })
+    // state where user listen lecture
+    .state("lecture", {
         url: "/lecture/:type/:number",
         templateUrl: "template/lecture.html",
         resolve: {
@@ -100,7 +129,7 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]).config(function
             };
             scope.formMaker = formMaker;
         },
-        controller: function controller($scope, $sce) {
+        controller: function controller() {
             _angular2.default.element('[data-toggle="tooltip"]').tooltip();
         }
 
@@ -113,7 +142,7 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]).config(function
 var formMaker = function formMaker(tempStr, exampleArr) {
     var tilda = /~/;
     exampleArr.forEach(function (example) {
-        tempStr = tempStr.replace(tilda, "<input class='form' placeholder=" + example + "/>");
+        tempStr = tempStr.replace(tilda, "<input class='form' id=\"blank\" placeholder=\"" + example + "\"/>");
     });
     return tempStr;
 };
