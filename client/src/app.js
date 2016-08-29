@@ -3,9 +3,31 @@ import angular from "angular";
 import "angular-ui-router";
 import "angular-bootstrap-npm";
 
-let formMaker = require('./formMaker');
-
-angular.module("gqApp", ["ui.router", "ui.bootstrap"])
+let formMaker = require('./formMaker');                 // Not using any more
+let moment = require('./moment');
+angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not using anymore
+    .factory('memoService', function(){
+        let memo = "";
+        return {
+            getMemo: function(){
+                return memo;
+            },
+            setMemo: function(newMemo){
+                memo = newMemo;
+            }
+        }
+    })
+    .factory('userService', function(){
+        let userName = "";
+        return {
+            getName : function(){
+                return userName;
+            },
+            setName : function(name){
+                userName = name;
+            }
+        }
+    })
     .config( function($stateProvider){
 
         $stateProvider
@@ -13,11 +35,109 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
             .state("home",{ 
                 url: "/home",
                 templateUrl: "template/home.html",
-                controller: function(){
-                    this.hello = "환영합니다.";
+                controller: function($http, $scope, userService){
+                    $scope.setUser = function(name){
+                        userService.setName(name);
+                        console.log(userService.getName());
+                    }
+                    $scope.sendCookie = function(userName){
+                        $http.get(`/user/${userName}`)
+                                .then(function(data){
+                                    console.log(data);
+                                });
+                    }
+                    this.hello = "Welcome to Join us";
                 },
                 controllerAs: "gqCtrl"
             })
+            // course state ( where students takes course )
+            .state("course", {
+                url: "/course/:lecNum/:lecInterval",
+                templateUrl: "template/course.html",
+                resolve:{
+                    subgoalService: function($http, $stateParams){
+                        let lecNum =  $stateParams.lecNum;
+                        let lecInterval = $stateParams.lecInterval;
+                        return $http.get(`/subgoal/${lecNum}/${lecInterval}`);
+                    }
+
+                },
+                controller: function($scope, subgoalService, 
+                                        $stateParams, $location, $timeout,
+                                        memoService
+                                        ){
+                    
+                    let subgoalList = [];
+                    let player;
+                    let prevInter = 0;
+                
+                    let lecNum = +$stateParams.lecNum;
+                    let lecInterval = +$stateParams.lecInterval;
+
+
+                    $scope.curSubgoal = subgoalService
+                                            .data
+                                            .lecSubgoal[+$stateParams.lecInterval];
+                    $scope.lecNum = lecNum;
+                    $scope.lecInterval = lecInterval;
+                    // when player ready to play
+                    function onPlayerReady(event){              
+                        let length; 
+                        let interval = +$stateParams.lecInterval;
+
+                        if (interval > 0){
+                            prevInter = subgoalList[interval - 1];
+                        }
+                        length = subgoalList[interval] - prevInter;
+                        console.log(subgoalList[interval], prevInter, length);
+                        
+                        let lec = +$stateParams.lecNum;
+                        player.seekTo(prevInter);
+                        $timeout( function(){
+                            player.pauseVideo();
+                        //    $location.path(`/template/${lec}/${interval}`);
+                        }, length * 1000);
+                    };
+                    
+                    function onPlayerStateChange(event){
+                        // Get Current Time
+                        let curTime = player.getCurrentTime();  
+                        
+                    };
+
+                    angular.element(document).ready(function(){
+                        // Lectures subgoal List
+                        subgoalList = subgoalService
+                                        .data
+                                        .lecSubgoal;                       
+                        // subgoal times to seconds                
+                        subgoalList = subgoalList
+                                        .map((subgoals) => 
+                                              moment
+                                              .duration(subgoals.time)
+                                              .as('minutes'));
+                        // Save youtube Player
+                        player = new YT.Player('player', {  
+                            height: '390', width: '640',
+                            videoId:'3nxR6jEI_RA',              
+                            events : {                         
+                                'onReady': onPlayerReady,
+                                'onStateChange':
+                                           onPlayerStateChange        
+
+                            }
+                        });
+                    });
+
+
+                    $scope.setMemo = function(newMemo){
+                        console.log(newMemo);
+                        memoService.setMemo(newMemo);
+                    }
+                },
+                controllerAs: 'courseCtrl'
+                
+           })
             // asking question states
             .state("questions", {
                 url: "/template/:lecNum/:lecInterval",
@@ -31,33 +151,67 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
                         let lecInterval = +$stateParams.lecInterval;
                         return $http.get(`/subgoal/${lecNum}/${lecInterval}`);
                     }
+                                 
 
                 },
-                controller: function($scope, $sce,  questionService, subgoalService, $stateParams){
+                controller: function($scope, $http,  
+                                     questionService, subgoalService,
+                                     $stateParams, $timeout,
+                                     memoService,
+                                     userService){
                     this.types = questionService.data;      // bind question template types
                     this.lecture = subgoalService.data;     // bind lecture's subgoal
-                    this.lecInterval = +$stateParams.lecInterval; // find current lectueInterval state
-
-                    // set current Question
-                    $scope.curQuestion = null;
+                    this.lecInterval = +$stateParams.lecInterval; 
+                    $scope.suggested = this.lecture
+                                            .lecSubgoal[this.lecInterval]
+                                            .suggested;
+                    
+                    
+                    
+                    // template description tooltip                    
+                    angular.element(document).ready(function(){
+                        $timeout(function(){
+                            $('[data-toggle="tooltip"]').tooltip();
+                        }, 100);
+                    });
+                    
+                    $scope.memo = memoService.getMemo();
+                    // 1. set current Question Category
+                    //// set question category 
+                    $scope.curCategory = null;
                     $scope.setStemQuestion = function(category){
-                        $scope.curQuestion = category;
-                        console.log(category);
+                        $scope.curCategory = category;
                     };
-
-                    // make form with selected question stem
-                    $scope.curForm = null;
-                    $scope.getForm = function(tempStr, example){
-                        $scope.curForm = $sce.trustAsHtml(formMaker(tempStr, example));
-                        console.log(formMaker(tempStr, example));
-                    };
-
-                    // add and delete completed Questions
+                    
+                    // 2. set current question template
+                    //// set specific question template
+                    $scope.curTemplate = null;
+                    $scope.setTemplate = function(){
+                        $scope.selectedQuestion = true;
+                        $scope.curTemplate = angular.element(this)[0].template;
+                    }
+                    // 3. add completed Questions
+                    //// add question category and question string
                     $scope.questionBox = [];
-                    $scope.addQuestion = function(){
-                        let blankValue = angular.element("#blank")[0].value;
+                    $scope.addToBox = function(question){ 
+                        
+                        $scope.questionBox.push(
+                                            {"queStr":question, 
+                                             "queType": $scope.curCategory.typeStr,
+                                             "queTemplate":$scope.curTemplate,
+                                             "queAt":+$stateParams.lecInterval,
+                                             "queBy": userService.getName()});
+                        angular.element("#questionForm")[0].value = "";
+                    }
+
+                    // 4. submit question stage
+                    //// add question box to database
+                    $scope.submitQuestions = function(){
+                        $http.post('/submit', $scope.questionBox)
+                            .then(function(data){
+                                 console.log(data);
+                            });  
                     };
-                     
                 },
                 controllerAs: "tempCtrl"
             })
@@ -79,7 +233,7 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
                 },
                 controllerAs: 'listCtrl' 
             })
-            // state where user listen lecture
+            // state where user listen lecture ( currently not using )
             .state("lecture", {
                 url: "/lecture/:type/:number",
                 templateUrl: "template/lecture.html",
@@ -94,25 +248,26 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])
                 controllerAs: 'lectureCtrl'
 
             })
-            // course state ( where students takes course )
-            .state("course", {
-                url: "/course",
-                templateUrl: "template/course.html",
-                resolve:{
-                    getQuestion: function($http){
-                        return $http.get('/type');
+           // collected questions ( where instructors can watch students' questions ) 
+           .state("instructor", {
+                url: "/instructor",
+                templateUrl: "template/instructor.html",
+                resolve: {
+                    getQuestions : function($http){
+                        return $http.get('/allQuestions');
                     }
                 },
-                controller: function(getQuestion){
-                    this.types = getQuestion.data; 
-                },
-                controllerAs: 'courseCtrl'
-                
-           });
-            
+                controller: function($scope, getQuestions){
+                    $scope.queList = getQuestions.data;
+                }
 
+           })
+        
+        
+        ; // End of States
     })
-    .directive("gqTypetemplate", function(){
+    
+    .directive("gqTypetemplate", function(){ // This directive is currently not used.
         return {    
             templateUrl: "template/templateType.html",
             restrict: "E",

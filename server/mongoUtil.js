@@ -20,5 +20,8 @@ module.exports = {
     },
     lecture() {
         return _db.collection('lecture');
+    },
+    questions() {
+        return _db.collection('questions');
     }
 };

@@ -1,3 +1,25 @@
 .gq-pane{
     color: blue;
 }
+
+
+/* Custom Classes */
+.right{
+    float: right;
+}
+.text-right{
+    text-align: right;
+}
+
+
+.cursor-pointer{
+    cursor: pointer;
+}
+/*
+ * course.html */
+
+/* suggested --> 
+ * suggested question category */
+.suggested{
+    background: yellow;
+}
