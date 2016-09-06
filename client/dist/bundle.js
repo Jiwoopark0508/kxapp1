@@ -59,73 +59,8 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
             }
 
         },
-        controller: function controller($scope, subgoalService, $stateParams, $location, $timeout, $interval, memoService) {
+        controller: ctrl.courseCtrl,
 
-            var subgoalList = [];
-            var player = void 0;
-            var start = 0;
-
-            var lecNum = +$stateParams.lecNum;
-            var lecInterval = +$stateParams.lecInterval;
-
-            $scope.curSubgoal = subgoalService.data.lecSubgoal[+$stateParams.lecInterval];
-            $scope.lecNum = lecNum;
-            $scope.lecInterval = lecInterval;
-            // when player ready to play
-
-            var stateStart = false;
-            var curSubgoal = null;
-            function onPlayerReady(event) {
-                var length = void 0;
-                var interval = +$stateParams.lecInterval;
-
-                start = interval > 0 ? subgoalList[interval - 1] : 0;
-
-                length = subgoalList[interval] - start;
-
-                $scope.length = length;
-                $scope.cur = 0;
-                // course prompt should be run when user visits first time. 
-                coursePrompt.coursePrompt1(function () {
-                    player.seekTo(start);
-                });
-
-                var playerLoop = $interval(function () {
-
-                    var cur = player.getCurrentTime();
-                    var playTime = cur - start > 0 ? cur - start : 0;
-                    $scope.cur = playTime / length * 100;
-                    // Check for subgoal is done.  
-                    if ($scope.cur > 100) {
-                        player.pauseVideo();
-                        $interval.cancel(playerLoop);
-                        coursePrompt.coursePrompt2(curSubgoal.subgoal);
-                    }
-                }, 1000);
-            };
-
-            _angular2.default.element(document).ready(function () {
-                // Lectures subgoal List
-                subgoalList = subgoalService.data.lecSubgoal;
-                curSubgoal = subgoalList[lecInterval];
-                // subgoal times to seconds                
-                subgoalList = subgoalList.map(function (subgoals) {
-                    return moment.duration(subgoals.time).as('minutes');
-                });
-                // Save youtube Player
-                player = new YT.Player('player', {
-                    height: '390', width: '640',
-                    videoId: '3nxR6jEI_RA',
-                    events: {
-                        'onReady': onPlayerReady
-                    }
-                });
-            });
-
-            $scope.setMemo = function (newMemo) {
-                memoService.setMemo(newMemo);
-            };
-        },
         controllerAs: 'courseCtrl'
 
     })
@@ -219,21 +154,6 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
         },
         controllerAs: 'listCtrl'
     })
-    // state where user listen lecture ( currently not using )
-    .state("lecture", {
-        url: "/lecture/:type/:number",
-        templateUrl: "template/lecture.html",
-        resolve: {
-            getQuestionService: function getQuestionService($http, $stateParams) {
-                return $http.get("/lecture/" + $stateParams.type + "/" + $stateParams.number);
-            }
-        },
-        controller: function controller($scope, $sce, getQuestionService) {
-            $scope.taskTemplate = $sce.trustAsHtml(getQuestionService.data);
-        },
-        controllerAs: 'lectureCtrl'
-
-    })
     // collected questions ( where instructors can watch students' questions ) 
     .state("instructor", {
         url: "/instructor",
@@ -281,30 +201,99 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
 });
 
 },{"./controller":2,"./coursePrompt":3,"./formMaker":4,"./moment":5,"angular":9,"angular-bootstrap-npm":6,"angular-ui-router":7}],2:[function(require,module,exports){
-"use strict";
+'use strict';
 
-function homeCtrl($scope) {
+// some requirements
+var moment = require('./moment');
+var coursePrompt = require('./coursePrompt');
 
+// home Ctrl
+// user faces this one they enter the application
+function homeCtrl($scope, userService) {
     $scope.setUser = function (name) {
         userService.setName(name);
         console.log(userService.getName());
     };
     $scope.sendCookie = function (userName) {
-        $http.get("/user/" + userName).then(function (data) {
+        $http.get('/user/' + userName).then(function (data) {
             console.log(data);
         });
     };
     this.hello = "Welcome to Join us";
 };
+
+// course Ctrl
+// controller that manages lecture contents
+function courseCtrl($scope, subgoalService, $stateParams, $location, $timeout, $interval, memoService) {
+
+    var subgoalList = [];
+    var player = void 0;
+    var start = 0;
+    var curSubgoal = null;
+    var lecNum = +$stateParams.lecNum;
+    var lecInterval = +$stateParams.lecInterval;
+
+    $scope.curSubgoal = subgoalService.data.lecSubgoal[+$stateParams.lecInterval];
+    $scope.lecNum = lecNum;
+    $scope.lecInterval = lecInterval;
+    $scope.setMemo = function (newMemo) {
+        memoService.setMemo(newMemo);
+    };
+
+    angular.element(document).ready(function () {
+        // Lectures subgoal List
+        subgoalList = subgoalService.data.lecSubgoal;
+        // subgoal times to seconds                
+        subgoalList = subgoalList.map(function (subgoals) {
+            return moment.duration(subgoals.time).as('minutes');
+        });
+        // Save youtube Player
+        player = new YT.Player('player', {
+            height: '390', width: '640',
+            videoId: '3nxR6jEI_RA',
+            events: {
+                'onReady': onPlayerReady
+            }
+        });
+    });
+
+    function onPlayerReady(event) {
+        var length = subgoalList[lecInterval] - start;
+
+        start = lecInterval > 0 ? subgoalList[lecInterval - 1] : 0;
+
+        $scope.length = length;
+        $scope.cur = 0;
+        // course prompt should be run when user visits first time. 
+        coursePrompt.coursePrompt1(function () {
+            player.seekTo(start);
+        });
+
+        var playerLoop = $interval(function () {
+
+            var cur = player.getCurrentTime();
+            var playTime = cur - start > 0 ? cur - start : 0;
+            $scope.cur = playTime / length * 100;
+            // Check for subgoal is done.  
+            if ($scope.cur > 100) {
+                player.pauseVideo();
+                $interval.cancel(playerLoop);
+                coursePrompt.coursePrompt2($scope.curSubgoal.subgoal);
+            }
+        }, 1000);
+    };
+}
+
 function testCtrl($scope) {
     $scope.word = "Test";
 }
 module.exports = {
     testCtrl: testCtrl,
-    homeCtrl: homeCtrl
+    homeCtrl: homeCtrl,
+    courseCtrl: courseCtrl
 };
 
-},{}],3:[function(require,module,exports){
+},{"./coursePrompt":3,"./moment":5}],3:[function(require,module,exports){
 "use strict";
 
 function coursePrompt1(callback) {

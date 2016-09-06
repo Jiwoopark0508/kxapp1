@@ -53,85 +53,8 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                     }
 
                 },
-                controller: function($scope, subgoalService, 
-                                        $stateParams, $location, $timeout,
-                                        $interval, memoService
-                                        ){
+                controller: ctrl.courseCtrl, 
                                     
-                    let subgoalList = [];
-                    let player;
-                    let start = 0;
-                
-                    let lecNum = +$stateParams.lecNum;
-                    let lecInterval = +$stateParams.lecInterval;
-
-
-                    $scope.curSubgoal = subgoalService
-                                            .data
-                                            .lecSubgoal[+$stateParams.lecInterval];
-                    $scope.lecNum = lecNum;
-                    $scope.lecInterval = lecInterval;
-                    // when player ready to play
-
-                    let stateStart = false; 
-                    let curSubgoal = null;
-                    function onPlayerReady(event){              
-                        let length; 
-                        let interval = +$stateParams.lecInterval;
-
-                        start = ( interval > 0 ) ? subgoalList[interval - 1] : 0 ;
-                        
-                        length = subgoalList[interval] - start;
-                 
-                        $scope.length = length;
-                        $scope.cur = 0;
-                        // course prompt should be run when user visits first time. 
-                        coursePrompt.coursePrompt1(function(){
-                            player.seekTo(start);
-                        });
-
-                        let playerLoop = $interval(function(){
-
-                            let cur = player.getCurrentTime();
-                            let playTime = (cur - start > 0) ? cur - start : 0;
-                            $scope.cur = playTime / length * 100;
-                            // Check for subgoal is done.  
-                            if( $scope.cur > 100){
-                                player.pauseVideo();
-                                $interval.cancel(playerLoop);
-                                coursePrompt.coursePrompt2(curSubgoal.subgoal);
-                            }
-                        }, 1000);
-
-                    };
-                   
-                    angular.element(document).ready(function(){
-                        // Lectures subgoal List
-                        subgoalList = subgoalService
-                                        .data
-                                        .lecSubgoal;                       
-                        curSubgoal = subgoalList[lecInterval];
-                        // subgoal times to seconds                
-                        subgoalList = subgoalList
-                                        .map((subgoals) => 
-                                              moment
-                                              .duration(subgoals.time)
-                                              .as('minutes'));
-                        // Save youtube Player
-                        player = new YT.Player('player', {  
-                            height: '390', width: '640',
-                            videoId:'3nxR6jEI_RA',              
-                            events : {                         
-                                'onReady': onPlayerReady
-                            }
-                        });
-                    });
-
-
-                    $scope.setMemo = function(newMemo){
-                        memoService.setMemo(newMemo);
-                    }
-                },
                 controllerAs: 'courseCtrl'
                 
            })
@@ -236,21 +159,6 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                     };
                 },
                 controllerAs: 'listCtrl' 
-            })
-            // state where user listen lecture ( currently not using )
-            .state("lecture", {
-                url: "/lecture/:type/:number",
-                templateUrl: "template/lecture.html",
-                resolve:{
-                    getQuestionService: function($http, $stateParams){
-                        return $http.get(`/lecture/${$stateParams.type}/${$stateParams.number}`);
-                    }
-                },
-                controller: function($scope, $sce, getQuestionService){
-                    $scope.taskTemplate = $sce.trustAsHtml(getQuestionService.data);
-                },
-                controllerAs: 'lectureCtrl'
-
             })
            // collected questions ( where instructors can watch students' questions ) 
            .state("instructor", {
