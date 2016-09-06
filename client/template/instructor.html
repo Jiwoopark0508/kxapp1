@@ -1,3 +1,7 @@
-<ul>
-    <li ng-repeat="question in queList">{{question.queStr}}{{question.queType}}</li>
+<ul class="list-group">
+    <li class="list-group-item" ng-repeat="question in queList">
+        Question Template : {{question.queStr}} <br />
+        Question Type : {{question.queType}} <br />
+        Question By : {{question.queBy}}
+    </li>
 </ul>

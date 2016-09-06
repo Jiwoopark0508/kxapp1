@@ -13,6 +13,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var formMaker = require('./formMaker'); // Not using any more
 var moment = require('./moment');
+var coursePrompt = require('./coursePrompt');
+
+var ctrl = require('./controller');
 _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap not using anymore
 .factory('memoService', function () {
     var memo = "";
@@ -41,18 +44,7 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
     .state("home", {
         url: "/home",
         templateUrl: "template/home.html",
-        controller: function controller($http, $scope, userService) {
-            $scope.setUser = function (name) {
-                userService.setName(name);
-                console.log(userService.getName());
-            };
-            $scope.sendCookie = function (userName) {
-                $http.get("/user/" + userName).then(function (data) {
-                    console.log(data);
-                });
-            };
-            this.hello = "Welcome to Join us";
-        },
+        controller: ctrl.homeCtrl,
         controllerAs: "gqCtrl"
     })
     // course state ( where students takes course )
@@ -67,11 +59,11 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
             }
 
         },
-        controller: function controller($scope, subgoalService, $stateParams, $location, $timeout, memoService) {
+        controller: function controller($scope, subgoalService, $stateParams, $location, $timeout, $interval, memoService) {
 
             var subgoalList = [];
             var player = void 0;
-            var prevInter = 0;
+            var start = 0;
 
             var lecNum = +$stateParams.lecNum;
             var lecInterval = +$stateParams.lecInterval;
@@ -80,32 +72,42 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
             $scope.lecNum = lecNum;
             $scope.lecInterval = lecInterval;
             // when player ready to play
+
+            var stateStart = false;
+            var curSubgoal = null;
             function onPlayerReady(event) {
                 var length = void 0;
                 var interval = +$stateParams.lecInterval;
 
-                if (interval > 0) {
-                    prevInter = subgoalList[interval - 1];
-                }
-                length = subgoalList[interval] - prevInter;
-                console.log(subgoalList[interval], prevInter, length);
+                start = interval > 0 ? subgoalList[interval - 1] : 0;
 
-                var lec = +$stateParams.lecNum;
-                player.seekTo(prevInter);
-                $timeout(function () {
-                    player.pauseVideo();
-                    //    $location.path(`/template/${lec}/${interval}`);
-                }, length * 1000);
-            };
+                length = subgoalList[interval] - start;
 
-            function onPlayerStateChange(event) {
-                // Get Current Time
-                var curTime = player.getCurrentTime();
+                $scope.length = length;
+                $scope.cur = 0;
+                // course prompt should be run when user visits first time. 
+                coursePrompt.coursePrompt1(function () {
+                    player.seekTo(start);
+                });
+
+                var playerLoop = $interval(function () {
+
+                    var cur = player.getCurrentTime();
+                    var playTime = cur - start > 0 ? cur - start : 0;
+                    $scope.cur = playTime / length * 100;
+                    // Check for subgoal is done.  
+                    if ($scope.cur > 100) {
+                        player.pauseVideo();
+                        $interval.cancel(playerLoop);
+                        coursePrompt.coursePrompt2(curSubgoal.subgoal);
+                    }
+                }, 1000);
             };
 
             _angular2.default.element(document).ready(function () {
                 // Lectures subgoal List
                 subgoalList = subgoalService.data.lecSubgoal;
+                curSubgoal = subgoalList[lecInterval];
                 // subgoal times to seconds                
                 subgoalList = subgoalList.map(function (subgoals) {
                     return moment.duration(subgoals.time).as('minutes');
@@ -115,15 +117,12 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
                     height: '390', width: '640',
                     videoId: '3nxR6jEI_RA',
                     events: {
-                        'onReady': onPlayerReady,
-                        'onStateChange': onPlayerStateChange
-
+                        'onReady': onPlayerReady
                     }
                 });
             });
 
             $scope.setMemo = function (newMemo) {
-                console.log(newMemo);
                 memoService.setMemo(newMemo);
             };
         },
@@ -149,10 +148,17 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
             this.types = questionService.data; // bind question template types
             this.lecture = subgoalService.data; // bind lecture's subgoal
             this.lecInterval = +$stateParams.lecInterval;
+
+            var tutChecked = false; // tutChecked or not
+
             $scope.suggested = this.lecture.lecSubgoal[this.lecInterval].suggested;
 
             // template description tooltip                    
             _angular2.default.element(document).ready(function () {
+                if (!tutChecked) {
+                    coursePrompt.tutPrompt();
+                }
+
                 $timeout(function () {
                     $('[data-toggle="tooltip"]').tooltip();
                 }, 100);
@@ -241,6 +247,15 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
             $scope.queList = getQuestions.data;
         }
 
+    }).state("wiki_survey", {
+        url: "/wiki_survey",
+        templateUrl: "template/wiki_survey.html",
+        resolve: {
+            getQuestions: function getQuestions($http) {
+                return $http.get('/allQuestions');
+            }
+        },
+        controller: ctrl.testCtrl
     }); // End of States
 }).directive("gqTypetemplate", function () {
     // This directive is currently not used.
@@ -265,7 +280,176 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
     };
 });
 
-},{"./formMaker":2,"./moment":3,"angular":7,"angular-bootstrap-npm":4,"angular-ui-router":5}],2:[function(require,module,exports){
+},{"./controller":2,"./coursePrompt":3,"./formMaker":4,"./moment":5,"angular":9,"angular-bootstrap-npm":6,"angular-ui-router":7}],2:[function(require,module,exports){
+"use strict";
+
+function homeCtrl($scope) {
+
+    $scope.setUser = function (name) {
+        userService.setName(name);
+        console.log(userService.getName());
+    };
+    $scope.sendCookie = function (userName) {
+        $http.get("/user/" + userName).then(function (data) {
+            console.log(data);
+        });
+    };
+    this.hello = "Welcome to Join us";
+};
+function testCtrl($scope) {
+    $scope.word = "Test";
+}
+module.exports = {
+    testCtrl: testCtrl,
+    homeCtrl: homeCtrl
+};
+
+},{}],3:[function(require,module,exports){
+"use strict";
+
+function coursePrompt1(callback) {
+    console.log("course Prompt");
+
+    var state = {
+        state0: {
+            title: "You take course here!",
+            html: "<p> In this section, you are going to take course.</p>\n                  <p> The video is divided into several parts, and each part is about its own subgoal. </p>\n                  <p> After some time interval, video will stop automatically. That means its part is over. \n                   So you should move on to question section by clicking below Go To Template button.</p>\n                   <p>Also, you can use memo in textarea.</p>\n                 ",
+            buttons: { OK: true },
+            submit: function submit(e, v) {
+                e.preventDefault();
+                if (v) {
+                    $.prompt.close();
+                    callback();
+                }
+            }
+        }
+    };
+    $.prompt(state);
+};
+function tutPrompt() {
+    console.log("tutPrompt.js");
+    var states = {
+        state0: {
+            title: 'Here is where you write question',
+            html: "<p>In here, you can write your own questions\n                   </p>\n                   <p>\n                      Question types and templates will be suggested.\n                   </p>\n                   <p>\n                      Make your own question using question templates!\n                   </p>",
+            buttons: { Start: true },
+            focus: 0,
+            submit: function submit(e, v) {
+                if (v) {
+                    e.preventDefault();
+                    $.prompt.goToState('state1');
+                } else {
+                    $.prompt.close();
+                }
+            }
+        },
+        state1: {
+            title: 'Subgoal Break Point',
+            html: "<p>In here, current subgoal and your notes will be presented</p>\n                   <p>You can reference these subgoal and your notes for your question generation </p>" + '<img class="full-width" src="/assets/img/stage1.png" />',
+            buttons: { Next: true, Prev: false },
+            focus: 0,
+            position: { container: '.subgoal_wrap',
+                x: 200,
+                y: 0,
+                width: 300,
+                arrow: 'lt' },
+            submit: function submit(e, v) {
+                e.preventDefault();
+                if (v) {
+                    $.prompt.goToState('state2');
+                } else {
+                    $.prompt.goToState('state0');
+                }
+            }
+        },
+        state2: {
+            title: 'Question Categories',
+            html: "<p>In here, question categories and question templates \n                    for that categories will be shown </p>\n                   <p>At first, you should select \n                        <strong>question category.</strong>\n                   </p>\n                   <p>Next, select specific \n                        <strong>question template.</strong>\n                   </p>" + '<img class="full-width" src="/assets/img/stage2.png" />',
+            buttons: { Next: true, Prev: false },
+            focus: 0,
+            position: {
+                container: '.queCate_wrap',
+                x: 200,
+                y: 0,
+                width: 700,
+                arrow: 'lt'
+            },
+            submit: function submit(e, v) {
+                e.preventDefault();
+                if (v) {
+                    $.prompt.goToState('state3');
+                } else {
+                    $.prompt.goToState('state1');
+                }
+            }
+        },
+        state3: {
+            title: 'Ask Questions and Submit It',
+            html: "<p>Here is stage for submiting your questions \n                    with template you chose</p>\n                   <p> In the left form, write your question, then press Add button. Then your question add to question box </p>\n                   <p> After adding your question box, submit your questions by pressing Commit button</p> " + '<img class="full-width" src="/assets/img/stage3.png" />' + "<p> Then modal shows up that confirm your questions finally </p>\n                    <p> Pressing Push button is the end of submission</p>" + '<img class="full-width" src="/assets/img/stage3_2.png" />',
+
+            buttons: { Next: true, Prev: false },
+            focus: 0,
+            position: {
+                container: '.submit_wrap',
+                x: 200,
+                y: 0,
+                width: 800,
+                arrow: 'lt'
+            },
+            submit: function submit(e, v) {
+                e.preventDefault();
+                if (v) {
+                    $.prompt.goToState('state4');
+                } else {
+                    $.prompt.goToState('state2');
+                }
+            }
+
+        },
+        state4: {
+            title: 'Return to Lecture or Rewatch Lecture',
+            html: "<p> After submission, you can resume lecture by Back button </p>\n                   <p> If you want to see lecture again while you submit question. You can use Rewatch button for rewatching previous section </p>" + '<img class="full-width" src="/assets/img/stage4.png" />',
+            buttons: { Close: true, Prev: false },
+            focus: 0,
+            position: {
+                container: '.helper_wrap',
+                x: 200,
+                y: 0,
+                width: 300,
+                arrow: 'lt'
+            },
+            submit: function submit(e, v) {
+                e.preventDefault();
+                if (v) {
+                    $.prompt.close();
+                } else {
+                    $.prompt.goToState('stage3');
+                }
+            }
+        }
+
+    };
+
+    $.prompt(states);
+}
+function coursePrompt2(inputStr) {
+    console.log("coursePrompt2" + inputStr);
+    var promptStr = inputStr + " part ends, keep working by click Go To Templates button.\n                    In the next section, you will make questions with using templates";
+    $.prompt(promptStr, {
+        title: "Section is over, it is time to ask question.",
+        buttons: { "Go to Ask": true },
+        submit: function submit(e, v) {
+            $.prompt.close();
+        }
+    });
+}
+module.exports = {
+    coursePrompt1: coursePrompt1,
+    coursePrompt2: coursePrompt2,
+    tutPrompt: tutPrompt
+};
+
+},{}],4:[function(require,module,exports){
 "use strict";
 
 var formMaker = function formMaker(tempStr, exampleArr) {
@@ -278,13 +462,13 @@ var formMaker = function formMaker(tempStr, exampleArr) {
 
 module.exports = formMaker;
 
-},{}],3:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 'use strict';
 
 var moment = require('moment');
 module.exports = moment;
 
-},{"moment":8}],4:[function(require,module,exports){
+},{"moment":10}],6:[function(require,module,exports){
 /*
  * angular-ui-bootstrap
  * http://angular-ui.github.io/bootstrap/
@@ -8788,7 +8972,7 @@ angular.module("template/typeahead/typeahead-popup.html", []).run(["$templateCac
     "");
 }]);
 !angular.$$csp() && angular.element(document).find('head').prepend('<style type="text/css">.ng-animate.item:not(.left):not(.right){-webkit-transition:0s ease-in-out left;transition:0s ease-in-out left}</style>');if(typeof module!=='undefined')module.exports='ui.bootstrap';
-},{}],5:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /**
  * State-based routing for AngularJS
  * @version v0.3.1
@@ -13365,7 +13549,7 @@ angular.module('ui.router.state')
   .filter('isState', $IsStateFilter)
   .filter('includedByState', $IncludedByStateFilter);
 })(window, window.angular);
-},{}],6:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 /**
  * @license AngularJS v1.5.8
  * (c) 2010-2016 Google, Inc. http://angularjs.org
@@ -45134,11 +45318,11 @@ $provide.value("$locale", {
 })(window);
 
 !window.angular.$$csp().noInlineStyle && window.angular.element(document.head).prepend('<style type="text/css">@charset "UTF-8";[ng\\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-hide-animate){display:none !important;}ng\\:form{display:block;}.ng-animate-shim{visibility:hidden;}.ng-anchor{position:absolute;}</style>');
-},{}],7:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 require('./angular');
 module.exports = angular;
 
-},{"./angular":6}],8:[function(require,module,exports){
+},{"./angular":8}],10:[function(require,module,exports){
 //! moment.js
 //! version : 2.14.1
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors

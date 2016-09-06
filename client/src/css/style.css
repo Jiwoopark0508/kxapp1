@@ -23,3 +23,29 @@
 .suggested{
     background: yellow;
 }
+
+.question-categories{
+    overflow:auto;
+}
+
+
+/*
+ * img full-width
+ * */
+
+.full-width{
+    width : 100%;
+}
+
+
+/*
+ * wiki_survey page
+ * */
+
+.wiki_survey{
+    background: aqua;
+    color: white;
+    margin : 10px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px;
+}

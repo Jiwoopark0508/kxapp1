@@ -5,6 +5,9 @@ import "angular-bootstrap-npm";
 
 let formMaker = require('./formMaker');                 // Not using any more
 let moment = require('./moment');
+let coursePrompt = require('./coursePrompt');
+
+let ctrl = require('./controller');
 angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not using anymore
     .factory('memoService', function(){
         let memo = "";
@@ -35,19 +38,7 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
             .state("home",{ 
                 url: "/home",
                 templateUrl: "template/home.html",
-                controller: function($http, $scope, userService){
-                    $scope.setUser = function(name){
-                        userService.setName(name);
-                        console.log(userService.getName());
-                    }
-                    $scope.sendCookie = function(userName){
-                        $http.get(`/user/${userName}`)
-                                .then(function(data){
-                                    console.log(data);
-                                });
-                    }
-                    this.hello = "Welcome to Join us";
-                },
+                controller: ctrl.homeCtrl, 
                 controllerAs: "gqCtrl"
             })
             // course state ( where students takes course )
@@ -64,12 +55,12 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                 },
                 controller: function($scope, subgoalService, 
                                         $stateParams, $location, $timeout,
-                                        memoService
+                                        $interval, memoService
                                         ){
-                    
+                                    
                     let subgoalList = [];
                     let player;
-                    let prevInter = 0;
+                    let start = 0;
                 
                     let lecNum = +$stateParams.lecNum;
                     let lecInterval = +$stateParams.lecInterval;
@@ -81,35 +72,45 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                     $scope.lecNum = lecNum;
                     $scope.lecInterval = lecInterval;
                     // when player ready to play
+
+                    let stateStart = false; 
+                    let curSubgoal = null;
                     function onPlayerReady(event){              
                         let length; 
                         let interval = +$stateParams.lecInterval;
 
-                        if (interval > 0){
-                            prevInter = subgoalList[interval - 1];
-                        }
-                        length = subgoalList[interval] - prevInter;
-                        console.log(subgoalList[interval], prevInter, length);
+                        start = ( interval > 0 ) ? subgoalList[interval - 1] : 0 ;
                         
-                        let lec = +$stateParams.lecNum;
-                        player.seekTo(prevInter);
-                        $timeout( function(){
-                            player.pauseVideo();
-                        //    $location.path(`/template/${lec}/${interval}`);
-                        }, length * 1000);
-                    };
-                    
-                    function onPlayerStateChange(event){
-                        // Get Current Time
-                        let curTime = player.getCurrentTime();  
-                        
-                    };
+                        length = subgoalList[interval] - start;
+                 
+                        $scope.length = length;
+                        $scope.cur = 0;
+                        // course prompt should be run when user visits first time. 
+                        coursePrompt.coursePrompt1(function(){
+                            player.seekTo(start);
+                        });
 
+                        let playerLoop = $interval(function(){
+
+                            let cur = player.getCurrentTime();
+                            let playTime = (cur - start > 0) ? cur - start : 0;
+                            $scope.cur = playTime / length * 100;
+                            // Check for subgoal is done.  
+                            if( $scope.cur > 100){
+                                player.pauseVideo();
+                                $interval.cancel(playerLoop);
+                                coursePrompt.coursePrompt2(curSubgoal.subgoal);
+                            }
+                        }, 1000);
+
+                    };
+                   
                     angular.element(document).ready(function(){
                         // Lectures subgoal List
                         subgoalList = subgoalService
                                         .data
                                         .lecSubgoal;                       
+                        curSubgoal = subgoalList[lecInterval];
                         // subgoal times to seconds                
                         subgoalList = subgoalList
                                         .map((subgoals) => 
@@ -121,17 +122,13 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                             height: '390', width: '640',
                             videoId:'3nxR6jEI_RA',              
                             events : {                         
-                                'onReady': onPlayerReady,
-                                'onStateChange':
-                                           onPlayerStateChange        
-
+                                'onReady': onPlayerReady
                             }
                         });
                     });
 
 
                     $scope.setMemo = function(newMemo){
-                        console.log(newMemo);
                         memoService.setMemo(newMemo);
                     }
                 },
@@ -162,6 +159,9 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                     this.types = questionService.data;      // bind question template types
                     this.lecture = subgoalService.data;     // bind lecture's subgoal
                     this.lecInterval = +$stateParams.lecInterval; 
+
+                    let tutChecked = false;                  // tutChecked or not
+
                     $scope.suggested = this.lecture
                                             .lecSubgoal[this.lecInterval]
                                             .suggested;
@@ -170,6 +170,10 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                     
                     // template description tooltip                    
                     angular.element(document).ready(function(){
+                        if( !tutChecked){
+                            coursePrompt.tutPrompt();
+                        }
+
                         $timeout(function(){
                             $('[data-toggle="tooltip"]').tooltip();
                         }, 100);
@@ -262,6 +266,17 @@ angular.module("gqApp", ["ui.router", "ui.bootstrap"])  // ui.bootstrap not usin
                 }
 
            })
+           .state("wiki_survey", {
+                url: "/wiki_survey",
+                templateUrl: "template/wiki_survey.html",
+                resolve: {
+                    getQuestions: function($http){
+                        return $http.get('/allQuestions');
+                    }
+                },
+                controller: ctrl.testCtrl
+            })
+
         
         
         ; // End of States

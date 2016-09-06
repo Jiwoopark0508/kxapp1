@@ -2,42 +2,59 @@
     <div class="row">
         <!-- Notice subgoal-->
     <div class="gq-resizable-horizontal col-md-3">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                Until now, <br />it was the lecture about 
-            </div>
-            <div class="panel-body">
-                 {{tempCtrl.lecture.lecSubgoal[tempCtrl.lecInterval].subgoal}}   
+        <div class="subgoal_wrap">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    Until now, <br />it was the lecture about 
+                </div>
+                <div class="panel-body">
+                     {{tempCtrl.lecture.lecSubgoal[tempCtrl.lecInterval].subgoal}}   
+                </div>
             </div>
         </div>
-    <div class="form-group">
-    
-        <label for="memo">Memo</label>
-        <textarea class="form-control"ng-model="memo" id="memo" rows="8" cols="40"></textarea>
-    </div>        
+        <div class="form-group">
+        
+            <label for="memo">Memo</label>
+            <textarea class="form-control"
+                ng-model="memo" id="memo" rows="8" cols="40">
+            </textarea>
+        </div>        
+        <div class="helper_wrap">
+            <button class="btn btn-info" 
+                    ui-sref="course({lecNum:0, lecInterval:tempCtrl.lecInterval + 1})"
+                    type="submit">
+                    Back
+            </button>
+
+            <button class="btn btn-primary" 
+                ui-sref="course({lecNum:0, 
+                            lecInterval:tempCtrl.lecInterval})">
+                Rewatch Video
+            </button>
+        </div>
     </div>
         <!-- List of Question Categories-->
     <div class="gq-resizable-horizontal col-md-3">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                Select Question Category
-                <br />
-               ( Suggested category highlighted. )
-            </div>
-            <div class="panel-body">
-                <ul class="list-group">
-                    <li class="list-group-item cursor-pointer" 
-                        ng-class=
-                        "{'active': curCategory.typeStr == category.typeStr }"
-                        ng-repeat="category in tempCtrl.types" 
-                        ng-click="setStemQuestion(category)" 
-                        ng-show="suggested.indexOf($index) > -1"
-                        data-toggle="tooltip" 
-                        data-original-title="{{category.desc}}" 
-                        data-placement="left">
-                    <span >{{category.typeStr}} </span>
-                    </li>
-                </ul>
+        <div class="queCate_wrap">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    Select Question Category
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group">
+                        <li class="list-group-item question-categories cursor-pointer" 
+                            ng-class=
+                            "{'active': curCategory.typeStr == category.typeStr }"
+                            ng-repeat="category in tempCtrl.types" 
+                            ng-click="setStemQuestion(category)" 
+                            ng-show="suggested.indexOf($index) > -1"
+                            data-toggle="tooltip" 
+                            data-original-title="{{category.desc}}" 
+                            data-placement="left">
+                            <span >{{category.typeStr}} </span>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -59,30 +76,39 @@
     </div>
 </div>
 
-<div class="row">
+<hr />
+
+<div class="row submit_wrap">
     <!-- Current Stem Question -->
     <div class="gq-resizable-horizontal col-md-6">
         <div class="panel panel-primary">
             <div class="panel-heading">
-                Selected Form : {{ curTemplate.tempStr }} [ {{curCategory.typeStr}} ]
+                Selected Form :  [ {{curCategory.typeStr}} ]
+                <br /> 
+                {{ curTemplate.tempStr }}
             </div>
+            
             <!-- Add to Box-->
              <form ng-show="selectedQuestion" ng-submit="addToBox(question)">
-                 <div class="panel-body">
+                <div class="panel-body">         
                      <input id="questionForm" type="text" class="form-control" ng-model="question"/>
                  </div>
                  <div class="text-right panel-footer">
-                     <button class="btn btn-primary" type="submit">Add</button>
-                 </div>
-        </div>
-               </form>    
-        
+                     <button class="btn btn-primary"
+                            type="submit">
+                         Add
+                     </button>
 
-        
+                 </div>
+                </div>        
+           </form>    
+            
+            
+                     
     </div>
     <!-- Current Question that in Stages -->
     <div class="gq-resizable-horizontal col-md-6">
-        <div ng-show="questionBox.length > 0" class="questionBox">
+        <div class="questionBox">
             <div class="panel panel-warning">
                 <div class="panel-heading">Questions List to Submit</div>
                 <div class="panel-body">
@@ -117,6 +143,4 @@
         </div>
     </div>
 </div>
-<button class="btn btn-info" ui-sref="course({lecNum:0, lecInterval:tempCtrl.lecInterval + 1})" type="submit">Back</button>
-<button class="btn btn-warning" ui-sref="course({lecNum:0, lecInterval:tempCtrl.lecInterval})">Rewatch Video</button>
 

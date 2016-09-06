@@ -1,10 +1,26 @@
 <h1>Courses</h1>
 
+<!-- This part is for direct subgoal-->
 <h3>This part is about {{ curSubgoal.subgoal}}</h3>
+<!-- This part is for player and Memo-->
 <div class="container text-center">
     <div class="col-md-9">
         <div id="player"></div>
+        <!-- This part is for progress bar-->
+        <div class="progress">
+            <div class="progress-bar 
+                progress-bar-success 
+                progress-bar-striped active"
+                aria-valuenow="{{cur}}"
+                aria-valuemin="0"
+                aria-valuemax="{{length}}"
+                style="width:{{cur}}%">
+            </div>
+        </div>
+
+
     </div>
+
     <div class="col-md-3 form-group">
 
         <label for="memo">Memo</label>
