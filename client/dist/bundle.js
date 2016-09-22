@@ -11,7 +11,6 @@ require("angular-bootstrap-npm");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var formMaker = require('./formMaker'); // Not using any more
 var moment = require('./moment');
 var coursePrompt = require('./coursePrompt');
 
@@ -79,80 +78,8 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
             }
 
         },
-        controller: function controller($scope, $http, questionService, subgoalService, $stateParams, $timeout, memoService, userService) {
-            this.types = questionService.data; // bind question template types
-            this.lecture = subgoalService.data; // bind lecture's subgoal
-            this.lecInterval = +$stateParams.lecInterval;
-
-            var tutChecked = false; // tutChecked or not
-
-            $scope.suggested = this.lecture.lecSubgoal[this.lecInterval].suggested;
-
-            // template description tooltip                    
-            _angular2.default.element(document).ready(function () {
-                if (!tutChecked) {
-                    coursePrompt.tutPrompt();
-                }
-
-                $timeout(function () {
-                    $('[data-toggle="tooltip"]').tooltip();
-                }, 100);
-            });
-
-            $scope.memo = memoService.getMemo();
-            // 1. set current Question Category
-            //// set question category 
-            $scope.curCategory = null;
-            $scope.setStemQuestion = function (category) {
-                $scope.curCategory = category;
-            };
-
-            // 2. set current question template
-            //// set specific question template
-            $scope.curTemplate = null;
-            $scope.setTemplate = function () {
-                $scope.selectedQuestion = true;
-                $scope.curTemplate = _angular2.default.element(this)[0].template;
-            };
-            // 3. add completed Questions
-            //// add question category and question string
-            $scope.questionBox = [];
-            $scope.addToBox = function (question) {
-
-                $scope.questionBox.push({ "queStr": question,
-                    "queType": $scope.curCategory.typeStr,
-                    "queTemplate": $scope.curTemplate,
-                    "queAt": +$stateParams.lecInterval,
-                    "queBy": userService.getName() });
-                _angular2.default.element("#questionForm")[0].value = "";
-            };
-
-            // 4. submit question stage
-            //// add question box to database
-            $scope.submitQuestions = function () {
-                $http.post('/submit', $scope.questionBox).then(function (data) {
-                    console.log(data);
-                });
-            };
-        },
+        controller: ctrl.quesCtrl,
         controllerAs: "tempCtrl"
-    }).state("questions.list", {
-        url: "/:type",
-        templateUrl: "template/questionList.html",
-        resolve: {
-            questionService: function questionService($http, $stateParams) {
-                var questionType = $stateParams.type;
-                return $http.get("/type/" + questionType);
-            }
-        },
-        controller: function controller(questionService, $location) {
-            this.questionList = questionService.data[0];
-
-            this.setQuestion = function (type, number) {
-                $location.path("/lecture/" + type + "/" + number);
-            };
-        },
-        controllerAs: 'listCtrl'
     })
     // collected questions ( where instructors can watch students' questions ) 
     .state("instructor", {
@@ -200,7 +127,7 @@ _angular2.default.module("gqApp", ["ui.router", "ui.bootstrap"]) // ui.bootstrap
     };
 });
 
-},{"./controller":2,"./coursePrompt":3,"./formMaker":4,"./moment":5,"angular":9,"angular-bootstrap-npm":6,"angular-ui-router":7}],2:[function(require,module,exports){
+},{"./controller":2,"./coursePrompt":3,"./moment":4,"angular":8,"angular-bootstrap-npm":5,"angular-ui-router":6}],2:[function(require,module,exports){
 'use strict';
 
 // some requirements
@@ -287,13 +214,79 @@ function courseCtrl($scope, subgoalService, $stateParams, $location, $timeout, $
 function testCtrl($scope) {
     $scope.word = "Test";
 }
+
+function quesCtrl($scope, $http, questionService, subgoalService, $stateParams, $timeout, memoService, userService) {
+    this.types = questionService.data; // bind question template types
+    this.lecture = subgoalService.data; // bind lecture's subgoal
+    this.lecInterval = +$stateParams.lecInterval;
+
+    var tutChecked = false; // tutChecked or not
+
+    $scope.suggested = this.lecture.lecSubgoal[this.lecInterval].suggested;
+
+    // template description tooltip                    
+    angular.element(document).ready(function () {
+        if (!tutChecked) {
+            coursePrompt.tutPrompt();
+        }
+
+        $timeout(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        }, 100);
+    });
+
+    $scope.memo = memoService.getMemo();
+
+    // 
+    // 1. set current Question Category
+    //// set question category 
+    $scope.curCategory = null;
+    $scope.setStemQuestion = function (category) {
+        $scope.curCategory = category;
+    };
+
+    // 
+    // 2. set current question template
+    //// set specific question template
+    $scope.curTemplate = null;
+    $scope.setTemplate = function () {
+        $scope.selectedQuestion = true;
+        $scope.curTemplate = angular.element(this)[0].template;
+    };
+    //
+    // 3. add completed Questions
+    //// add question category and question string
+    $scope.questionBox = [];
+    $scope.addToBox = function (question) {
+
+        $scope.questionBox.push({ "queStr": question,
+            "queType": $scope.curCategory.typeStr,
+            "queTemplate": $scope.curTemplate,
+            "queAt": +$stateParams.lecInterval,
+            "queBy": userService.getName() });
+        clearForm();
+    };
+
+    function clearForm() {
+        angular.element("#questionForm")[0].value = "";
+    }
+    // 4. submit question stage
+    //// add question box to database
+    $scope.submitQuestions = function () {
+        $http.post('/submit', $scope.questionBox).then(function (data) {
+            console.log(data);
+        });
+    };
+}
+
 module.exports = {
     testCtrl: testCtrl,
     homeCtrl: homeCtrl,
-    courseCtrl: courseCtrl
+    courseCtrl: courseCtrl,
+    quesCtrl: quesCtrl
 };
 
-},{"./coursePrompt":3,"./moment":5}],3:[function(require,module,exports){
+},{"./coursePrompt":3,"./moment":4}],3:[function(require,module,exports){
 "use strict";
 
 function coursePrompt1(callback) {
@@ -439,25 +432,12 @@ module.exports = {
 };
 
 },{}],4:[function(require,module,exports){
-"use strict";
-
-var formMaker = function formMaker(tempStr, exampleArr) {
-    var tilda = /~/;
-    exampleArr.forEach(function (example) {
-        tempStr = tempStr.replace(tilda, "<input class='form' id=\"blank\" placeholder=\"" + example + "\"/>");
-    });
-    return tempStr;
-};
-
-module.exports = formMaker;
-
-},{}],5:[function(require,module,exports){
 'use strict';
 
 var moment = require('moment');
 module.exports = moment;
 
-},{"moment":10}],6:[function(require,module,exports){
+},{"moment":9}],5:[function(require,module,exports){
 /*
  * angular-ui-bootstrap
  * http://angular-ui.github.io/bootstrap/
@@ -8961,7 +8941,7 @@ angular.module("template/typeahead/typeahead-popup.html", []).run(["$templateCac
     "");
 }]);
 !angular.$$csp() && angular.element(document).find('head').prepend('<style type="text/css">.ng-animate.item:not(.left):not(.right){-webkit-transition:0s ease-in-out left;transition:0s ease-in-out left}</style>');if(typeof module!=='undefined')module.exports='ui.bootstrap';
-},{}],7:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 /**
  * State-based routing for AngularJS
  * @version v0.3.1
@@ -13538,7 +13518,7 @@ angular.module('ui.router.state')
   .filter('isState', $IsStateFilter)
   .filter('includedByState', $IncludedByStateFilter);
 })(window, window.angular);
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 /**
  * @license AngularJS v1.5.8
  * (c) 2010-2016 Google, Inc. http://angularjs.org
@@ -45307,11 +45287,11 @@ $provide.value("$locale", {
 })(window);
 
 !window.angular.$$csp().noInlineStyle && window.angular.element(document.head).prepend('<style type="text/css">@charset "UTF-8";[ng\\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-hide-animate){display:none !important;}ng\\:form{display:block;}.ng-animate-shim{visibility:hidden;}.ng-anchor{position:absolute;}</style>');
-},{}],9:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 require('./angular');
 module.exports = angular;
 
-},{"./angular":8}],10:[function(require,module,exports){
+},{"./angular":7}],9:[function(require,module,exports){
 //! moment.js
 //! version : 2.14.1
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors

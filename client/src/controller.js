@@ -93,8 +93,79 @@ function testCtrl($scope){
     $scope.word = "Test";
 
 }
+
+function quesCtrl($scope, $http, questionService, subgoalService,
+                  $stateParams, $timeout, memoService, userService){
+    this.types       = questionService.data;      // bind question template types
+    this.lecture     = subgoalService.data;     // bind lecture's subgoal
+    this.lecInterval = +$stateParams.lecInterval; 
+
+    let tutChecked   = false;                  // tutChecked or not
+
+    $scope.suggested = this.lecture
+                       .lecSubgoal[this.lecInterval]
+                       .suggested;
+    
+    // template description tooltip                    
+    angular.element(document).ready(function(){
+        if( !tutChecked){
+            coursePrompt.tutPrompt();
+        }
+
+        $timeout(function(){
+            $('[data-toggle="tooltip"]').tooltip();
+        }, 100);
+    });
+    
+    $scope.memo = memoService.getMemo();
+
+    // 
+    // 1. set current Question Category
+    //// set question category 
+    $scope.curCategory = null;
+    $scope.setStemQuestion = function(category){
+        $scope.curCategory = category;
+    };
+    
+    // 
+    // 2. set current question template
+    //// set specific question template
+    $scope.curTemplate = null;
+    $scope.setTemplate = function(){
+        $scope.selectedQuestion = true;
+        $scope.curTemplate = angular.element(this)[0].template;
+    }
+    //
+    // 3. add completed Questions
+    //// add question category and question string
+    $scope.questionBox = [];
+    $scope.addToBox = function(question){ 
+        
+        $scope.questionBox.push(
+                            {"queStr":question, 
+                             "queType": $scope.curCategory.typeStr,
+                             "queTemplate":$scope.curTemplate,
+                             "queAt":+$stateParams.lecInterval,
+                             "queBy": userService.getName()});
+        clearForm();
+    }
+
+    function clearForm(){
+        angular.element("#questionForm")[0].value = "";
+    }
+    // 4. submit question stage
+    //// add question box to database
+    $scope.submitQuestions = function(){
+        $http.post('/submit', $scope.questionBox)
+            .then(function(data){
+                 console.log(data);
+            });  
+    };
+}
+
 module.exports = {
     testCtrl: testCtrl,
     homeCtrl: homeCtrl,
-    courseCtrl: courseCtrl
+    courseCtrl: courseCtrl,
+    quesCtrl: quesCtrl
 };
